@@ -1,0 +1,47 @@
+name: Automated Postman API Tests
+
+# 設定觸發時機：當有程式碼 push 到 main / master 分支，或發起 Pull Request 時
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  api-test:
+    runs-on: ubuntu-latest # 使用 GitHub 提供的 Linux 測試環境
+
+    steps:
+      # 1. 切換並拉取專案程式碼
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. 安裝 Node.js 環境
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. 全域安裝 Newman 與 HTML 報告套件
+      - name: Install Newman and Reporters
+        run: |
+          npm install -g newman
+          npm install -g newman-reporter-htmlextra
+
+      # 4. 執行 Newman API 測試
+      - name: Run Postman Tests via Newman
+        run: |
+          newman run Collection.json \
+            -e environment.json \
+            --env-var "baseurl=${{ secrets.API_BASE_URL }}" \
+            --env-var "token=${{ secrets.API_TOKEN }}" \
+            -r cli,htmlextra \
+            --reporter-htmlextra-export newman/report.html
+
+      # 5. 上傳測試報告 artifact (當測試結束後可下載 HTML 報告查看)
+      - name: Upload Test Report
+        if: always() # 即使測試失敗也強制執行上傳
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-html-report
+          path: newman/report.html
