@@ -31,7 +31,7 @@ jobs:
       # 4. 執行 Newman API 測試
       - name: Run Postman Tests via Newman
         run: |
-          newman run Collection.json \
+          newman run collection.json \
             -e environment.json \
             --env-var "baseurl=${{ secrets.API_BASE_URL }}" \
             --env-var "token=${{ secrets.API_TOKEN }}" \
