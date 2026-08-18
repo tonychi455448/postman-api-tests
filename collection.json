@@ -1,0 +1,203 @@
+{
+  "info": {
+    "_postman_id": "afc9fc07-f071-422d-98da-d70e76705552",
+    "name": "E-Commerce API Automated Suite",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "44233235",
+    "_collection_link": "https://go.postman.co/collection/44233235-afc9fc07-f071-422d-98da-d70e76705552?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "01 - Login User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// 1. 斷言 Status Code 是否為 201 Created\r\npm.test(\"Status code is 201 Created\", function () {\r\n    pm.response.to.have.status(201);\r\n});\r\n\r\n// 2. 解析 JSON 回應並寫入環境變數\r\nconst responseData = pm.response.json();\r\n\r\npm.test(\"Response contains generated ID\", function () {\r\n    pm.expect(responseData).to.have.property('id');\r\n    \r\n    // 將產生的 ID 寫入環境變數作為 Token/Session 代表\r\n    pm.environment.set(\"token\", \"simulated_token_\" + responseData.id);\r\n    pm.environment.set(\"userId\", responseData.userId);\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"title\": \"foo\",\r\n  \"body\": \"bar\",\r\n  \"userId\": 1\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/posts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "posts"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "02 - Get User Posts",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// 1. 斷言 Status Code 200\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\nconst schema = {\r\n    \"type\": \"array\",\r\n    \"items\": {\r\n        \"type\": \"object\",\r\n        \"required\": [\"userId\", \"id\", \"title\", \"body\"],\r\n        \"properties\": {\r\n            \"userId\": { \"type\": \"number\" },\r\n            \"id\": { \"type\": \"number\" },\r\n            \"title\": { \"type\": \"string\" },\r\n            \"body\": { \"type\": \"string\" }\r\n        }\r\n    }\r\n};\r\n\r\n// 💡 執行 Schema 結構驗證\r\npm.test(\"Response Schema is valid\", function () {\r\n    pm.response.to.have.jsonSchema(schema);\r\n});\r\n\r\n// 2. 解析 JSON 並自動抓取第一篇文章的 ID\r\nconst responseData = pm.response.json();\r\n\r\npm.test(\"Posts array is not empty and store first postId\", function () {\r\n    pm.expect(responseData).to.be.an('array').that.is.not.empty;\r\n\r\n    // 取得第一筆文章的 ID 並存入環境變數\r\n    const firstPostId = responseData[0].id;\r\n    pm.environment.set(\"postId\", firstPostId);\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/posts?userId={{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "posts"
+          ],
+          "query": [
+            {
+              "key": "userId",
+              "value": "{{userId}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "03 - Create Comment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 201 Created\", function () {\r\n    pm.response.to.have.status(201);\r\n});\r\n\r\nconst responseData = pm.response.json();\r\n\r\n// 把伺服器回傳的留言內文 (body) 印在左下角的 Console 視窗中\r\nconsole.log(\"剛剛發布的留言內容為：\", responseData.body);\r\nconsole.log(\"這筆留言的專屬 ID 為：\", responseData.id);\r\n\r\npm.test(\"Verify comment is linked to correct postId\", function () {\r\n    pm.expect(responseData.postId).to.eql(pm.environment.get(\"postId\"));\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"postId\": {{postId}},\r\n  \"name\": \"QA Tester\",\r\n  \"email\": \"test@example.com\",\r\n  \"body\": \"Automated integration test passed!\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/comments",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "comments"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "05 - Verify Created Comment",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/comments?postId={{postId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "comments"
+          ],
+          "query": [
+            {
+              "key": "postId",
+              "value": "{{postId}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "04 - Delete Post",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 200 OK\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\n// 自動清理測試過程中產生的環境變數（保持環境乾淨）\r\npm.test(\"Cleanup temporary environment variables\", function () {\r\n    pm.environment.unset(\"postId\");\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/posts/{{postId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "posts",
+            "{{postId}}"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "// 這段 code 會自動作用在 Collection 裡面的「每一支 API」\r",
+          "pm.test(\"[Global Check] Response time is below 2000ms\", function () {\r",
+          "    pm.expect(pm.response.responseTime).to.be.below(2000);\r",
+          "});"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ]
+}
