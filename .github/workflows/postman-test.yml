@@ -1,48 +1,21 @@
 name: Automated Postman API Tests
 
-# 設定觸發時機：當有程式碼 push 到 main / master 分支，或發起 Pull Request 時
 on:
   push:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-
-jobs:
-  api-test:
-    runs-on: ubuntu-latest # 使用 GitHub 提供的 Linux 測試環境
-
-    steps:
-      # 1. 切換並拉取專案程式碼
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # 2. 安裝 Node.js 環境
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      # 3. 全域安裝 Newman 與 HTML 報告套件
-      - name: Install Newman and Reporters
-        run: |
-          npm install -g newmanname: Automated Postman API Tests
-
-on:
-  push:
-    branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
-  # 1. 增加排程觸發 (UTC 時間：24:00 等於 台灣時間早上 08:00)
+  # 1. 增加排程觸發 (UTC 時間 00:00，等於台灣時間早上 08:00)
   schedule:
     - cron: '0 0 * * *'
-  # 允許在 GitHub Actions 頁面上點擊「Run workflow」手動觸發
+  # 允許在 GitHub 介面上手動點擊執行
   workflow_dispatch:
 
 jobs:
   api-test:
     runs-on: ubuntu-latest
 
-    # 允許 Actions 建立 Issue 權限
+    # 允許 Actions 建立 Issue 的權限
     permissions:
       contents: read
       issues: write
@@ -76,7 +49,6 @@ jobs:
           name: postman-html-report
           path: newman/report.html
 
-      # 2. 當測試失敗時，自動建立 GitHub Issue 通知
       - name: Create Issue on Failure
         if: failure()
         uses: actions/github-script@v7
@@ -88,22 +60,3 @@ jobs:
               title: `🚨 [API 測試失敗] ${new Date().toISOString().split('T')[0]} 自動化巡檢未通過`,
               body: `### ⚠️ API 自動化測試報告異常\n\n- **觸發事件**: ${context.eventName}\n- **執行分支**: ${context.ref}\n- **Commit**: ${context.sha}\n\n請前往 [Actions 執行紀錄](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) 下載 HTML 測試報告進行排查！`
             })
-          npm install -g newman-reporter-htmlextra
-
-      # 4. 執行 Newman API 測試
-      - name: Run Postman Tests via Newman
-        run: |
-          newman run collection.json \
-            -e environment.json \
-            --env-var "baseurl=${{ secrets.API_BASE_URL }}" \
-            --env-var "token=${{ secrets.API_TOKEN }}" \
-            -r cli,htmlextra \
-            --reporter-htmlextra-export newman/report.html
-
-      # 5. 上傳測試報告 artifact (當測試結束後可下載 HTML 報告查看)
-      - name: Upload Test Report
-        if: always() # 即使測試失敗也強制執行上傳
-        uses: actions/upload-artifact@v4
-        with:
-          name: postman-html-report
-          path: newman/report.html
